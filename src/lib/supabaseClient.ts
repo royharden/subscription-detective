@@ -1,38 +1,28 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { jevDetectResultSchema, JevDetectResult, draftResultSchema, planChunks, buildQuestions, buildState, idToMerchant } from './analysis';
 import { CandidateSummary } from './csv';
 import { RecordedJevFixture } from './recordedJev';
 import { detectPriceHikes, detectTrialConversion, cadenceStats, monthlyEquivalentCents } from './detection';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabaseReady = Boolean(supabaseUrl && supabaseAnonKey);
 
-async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
-  if (error) {
-    // supabase-js wraps the raw Response in error.context; check it for 429/daily_limit
-    const ctx = (error as { context?: Response }).context;
-    if (ctx) {
-      if (ctx.status === 429) throw new Error('daily_limit');
-      try {
-        const errBody = await ctx.json();
-        if (errBody?.error === 'daily_limit') throw new Error('daily_limit');
-      } catch { /* not JSON or already consumed */ }
-    }
-    const message = typeof error.message === 'string' ? error.message : 'Edge function error';
-    if (message.includes('daily_limit') || message.includes('429')) throw new Error('daily_limit');
-    throw new Error(message);
-  }
-  return data as T;
-}
+export const supabase: SupabaseClient = supabaseReady
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : (null as unknown as SupabaseClient);
 
 async function invokeRaw(name: string, body: unknown): Promise<{ ok: boolean; status: number; json: unknown }> {
-  const res = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
+  if (!supabaseReady) {
+    return { ok: false, status: 503, json: { error: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' } };
+  }
+  const url = supabaseUrl as string;
+  const key = supabaseAnonKey as string;
+  const res = await fetch(`${url}/functions/v1/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, apikey: key },
     body: JSON.stringify(body),
   });
   let json: unknown = null;
@@ -92,8 +82,8 @@ async function callJevLive(candidates: CandidateSummary[]): Promise<JevDetectRes
     if (!parsed.success) throw new Error('Unexpected response from jev-detect');
     if (parsed.data.model) model = parsed.data.model;
     for (const [id, a] of Object.entries(parsed.data.answers)) {
-      const key = idMap.get(id);
-      if (key) answers[key] = { noul: a.noul, confidence: Math.abs(2 * a.noul - 1) };
+      // Store keyed by question ID (m01, m02, ...) so analyzeMerchants can look them up
+      answers[id] = { noul: a.noul, confidence: Math.abs(2 * a.noul - 1) };
     }
     const usage = parsed.data.usage ?? { input_tokens: 0, output_tokens: 0 };
     requests.push({
@@ -138,6 +128,10 @@ export async function runDetection(
         mode: 'replay',
       },
     };
+  }
+  if (!supabaseReady) {
+    // No Supabase configured: use heuristic so the sample CSV still works
+    return { result: heuristicResult(), error: 'Supabase not configured' };
   }
   try {
     const result = await callJevLive(candidates);
@@ -203,6 +197,7 @@ export async function saveAnalysis(payload: {
   }>;
   drafts: Array<{ merchant_key: string; tone: string; subject: string; body: string }>;
 }): Promise<void> {
+  if (!supabaseReady) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
   const { data: analysis, error } = await supabase
     .from('analyses')
     .insert({
@@ -241,18 +236,13 @@ export async function saveAnalysis(payload: {
   }
 }
 
-export async function clearSavedData(): Promise<void> {
-  // DELETE is revoked from anon/authenticated; these will fail at the DB level.
-  // Use allSettled so local data clearing is not blocked, and server-side
-  // cleanup is best-effort (the service role in an edge function would bypass RLS).
-  await Promise.allSettled([
-    supabase.from('drafts').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('merchants').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    supabase.from('analyses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-  ]);
+export function clearLocalData(): void {
+  localStorage.removeItem('sd_results');
+  localStorage.removeItem('sd_drafts');
 }
 
 export async function listSavedAnalyses(): Promise<SavedAnalysis[]> {
+  if (!supabaseReady) return [];
   const { data, error } = await supabase
     .from('analyses')
     .select('id, title, created_at, monthly_total_cents, annual_total_cents')

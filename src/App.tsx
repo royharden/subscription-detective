@@ -12,7 +12,7 @@ import { StatsPanel } from '@/components/StatsPanel';
 import { ReplayBadge } from '@/components/badges';
 import { MerchantResult, Status, computeTotals, analyzeMerchants, JevRequestLog } from '@/lib/analysis';
 import { groupMerchants, toCandidateSummary, isCandidateMerchant } from '@/lib/csv';
-import { runDetection } from '@/lib/supabaseClient';
+import { runDetection, clearLocalData, supabaseReady } from '@/lib/supabaseClient';
 import { createHash } from '@/lib/hash';
 import { formatCents } from '@/lib/detection';
 import { sampleCsvText } from '@/lib/sampleData';
@@ -56,10 +56,10 @@ export default function App() {
       const outcome = await runDetection(candidates, recordedFixture, summariesHash, sample);
       let mode: 'live' | 'replay' | 'heuristic';
       if (outcome.error === 'daily_limit') {
-        setNotice('Daily demo limit reached - switching to Replay mode');
-        mode = outcome.result && outcome.result.mode !== 'heuristic' ? outcome.result.mode : 'replay';
+        setNotice('Daily demo limit reached - showing heuristic fallback (not Jev). Results are labeled accordingly.');
+        mode = 'heuristic';
         setJevMode(mode);
-        setRequests(outcome.result?.requests ?? []);
+        setRequests([]);
       } else {
         if (outcome.error) {
           setNotice(`Detection fell back to a labeled heuristic classifier: ${outcome.error}`);
@@ -176,15 +176,8 @@ export default function App() {
     }
   }, [parseInfo, jevMode, llmMode, totals, requests, results]);
 
-  const handleClearAll = useCallback(async () => {
-    localStorage.removeItem('sd_results');
-    localStorage.removeItem('sd_drafts');
-    try {
-      const { clearSavedData } = await import('@/lib/supabaseClient');
-      await clearSavedData();
-    } catch {
-      // ignore network issues; local data is cleared regardless
-    }
+  const handleClearAll = useCallback(() => {
+    clearLocalData();
     setResults([]);
     setParseInfo(null);
     setPhase('import');
@@ -237,6 +230,12 @@ export default function App() {
               {notice}
             </div>
           )}
+          {!supabaseReady && (
+            <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              Supabase is not configured (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing). The sample CSV and Replay mode still work, but saving analyses to the cloud is disabled.
+            </div>
+          )}
           {isSample && (
             <div className="flex items-start gap-2 rounded-xl bg-slate-100 p-3 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
@@ -258,6 +257,7 @@ export default function App() {
             onSave={handleSave}
             saveState={saveState}
             onClearAll={handleClearAll}
+            supabaseReady={supabaseReady}
           />
         </main>
 

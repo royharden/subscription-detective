@@ -16,6 +16,7 @@ export function StatsPanel({
   onSave,
   saveState,
   onClearAll,
+  supabaseReady,
 }: {
   requests: JevRequestLog[];
   questionCount: number;
@@ -26,6 +27,7 @@ export function StatsPanel({
   onSave: () => void;
   saveState: 'idle' | 'saving' | 'saved' | 'error';
   onClearAll: () => void;
+  supabaseReady: boolean;
 }) {
   const [inputPer1M, setInputPer1M] = useState(LLM_INPUT_PER_1M);
   const [outputPer1M, setOutputPer1M] = useState(LLM_OUTPUT_PER_1M);
@@ -78,16 +80,18 @@ export function StatsPanel({
         <span className="hidden tnum">{llmEstimate > 0 ? '' : ''}</span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-        <button className="btn-secondary text-xs" onClick={onSave} disabled={saveState === 'saving'}>
+        <button className="btn-secondary text-xs" onClick={onSave} disabled={saveState === 'saving' || !supabaseReady}>
           <Save className="h-3.5 w-3.5" />
           {saveState === 'saved' ? 'Saved!' : saveState === 'saving' ? 'Saving...' : 'Save analysis (opt-in)'}
         </button>
         <button className="btn-secondary text-xs text-red-600 dark:text-red-400" onClick={onClearAll}>
           <Trash2 className="h-3.5 w-3.5" />
-          Clear all data
+          Clear local data
         </button>
         <span className="self-center text-[11px] text-slate-400">
-          Saving stores only merchant summaries and results in Supabase. Clearing wipes browser and saved data.
+          {supabaseReady
+            ? 'Saving stores only merchant summaries and results in Supabase. Clearing wipes browser data only (server-side delete requires the service role).'
+            : 'Supabase is not configured - saving is disabled. Clearing wipes browser data only.'}
         </span>
       </div>
     </div>

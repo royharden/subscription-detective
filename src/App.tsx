@@ -54,16 +54,20 @@ export default function App() {
       const summariesHash = createHash(JSON.stringify(candidates));
 
       const outcome = await runDetection(candidates, recordedFixture, summariesHash, sample);
+      let mode: 'live' | 'replay' | 'heuristic';
       if (outcome.error === 'daily_limit') {
         setNotice('Daily demo limit reached - switching to Replay mode');
-        setJevMode('replay');
-      } else if (outcome.error) {
-        setNotice(`Detection fell back to a labeled heuristic classifier: ${outcome.error}`);
+        mode = outcome.result && outcome.result.mode !== 'heuristic' ? outcome.result.mode : 'replay';
+        setJevMode(mode);
+        setRequests(outcome.result?.requests ?? []);
+      } else {
+        if (outcome.error) {
+          setNotice(`Detection fell back to a labeled heuristic classifier: ${outcome.error}`);
+        }
+        mode = outcome.result?.mode ?? 'heuristic';
+        setJevMode(mode);
+        setRequests(outcome.result?.requests ?? []);
       }
-
-      const mode = outcome.result?.mode ?? 'heuristic';
-      setJevMode(mode);
-      setRequests(outcome.result?.requests ?? []);
 
       const idMap = new Map<string, string>();
       candidates.forEach((c, i) => idMap.set(`m${String(i + 1).padStart(2, '0')}`, c.key));

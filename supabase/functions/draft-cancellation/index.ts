@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const DAILY_LIMIT = 200;
+const DAILY_LIMIT = Number(Deno.env.get("DAILY_CALL_LIMIT")) || 200;
 
 type Tone = "polite" | "firm" | "refund";
 
@@ -33,6 +33,26 @@ function err(message: string, status: number): Response {
 
 function dollars(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+}
+
+// Atomic check-and-increment: increments the daily counter and returns the new count.
+// Fail CLOSED: if the RPC errors or returns a non-number, the caller must not proceed.
+async function checkAndIncrement(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  functionName: string,
+): Promise<{ ok: true; count: number } | { ok: false; response: Response }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabaseAdmin.rpc("upsert_function_usage", {
+    p_function_name: functionName,
+    p_usage_date: today,
+  });
+  if (error || typeof data !== "number") {
+    return { ok: false, response: err("Usage counter unavailable. Please try again later.", 503) };
+  }
+  if (data > DAILY_LIMIT) {
+    return { ok: false, response: err("daily_limit", 429) };
+  }
+  return { ok: true, count: data };
 }
 
 function mockDraft(input: DraftRequest): { subject: string; body: string } {
@@ -104,15 +124,9 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    // Daily cap check
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: usageRow } = await supabaseAdmin
-      .from("function_usage")
-      .select("count")
-      .eq("function_name", "draft-cancellation")
-      .eq("usage_date", today)
-      .maybeSingle();
-    if ((usageRow?.count ?? 0) >= DAILY_LIMIT) return err("daily_limit", 429);
+    // Atomic check-and-increment BEFORE any upstream call. Fail closed on error.
+    const cap = await checkAndIncrement(supabaseAdmin, "draft-cancellation");
+    if (!cap.ok) return cap.response;
 
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-6-luna";
@@ -120,7 +134,6 @@ Deno.serve(async (req: Request) => {
 
     if (!apiKey) {
       // Mock mode: templates
-      await supabaseAdmin.rpc("upsert_function_usage", { p_function_name: "draft-cancellation", p_usage_date: today }).catch(() => {});
       return json({ ...mockDraft(body), mode: "mock" });
     }
 
@@ -177,8 +190,6 @@ Tone: ${tone}`;
         // retry once
       }
     }
-
-    await supabaseAdmin.rpc("upsert_function_usage", { p_function_name: "draft-cancellation", p_usage_date: today }).catch(() => {});
 
     if (!parsed) return err("The LLM could not produce a valid draft. Try again.", 502);
     return json({ ...parsed, mode: "live" });

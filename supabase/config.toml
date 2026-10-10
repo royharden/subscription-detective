@@ -1,7 +1,7 @@
 project_id = "subscription-detective"
 
 [functions.jev-detect]
-verify_jwt = false
+verify_jwt = true
 
 [functions.draft-cancellation]
-verify_jwt = false
+verify_jwt = true

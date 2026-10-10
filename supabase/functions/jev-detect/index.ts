@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const DAILY_LIMIT = 200;
+const DAILY_LIMIT = Number(Deno.env.get("DAILY_CALL_LIMIT")) || 200;
 const JEV_MODEL = "jev-1.13.0";
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
 const JEV_COST_PER_INPUT_TOKEN_USD = 0.042 / 1_000_000;
@@ -51,30 +51,24 @@ function err(message: string, status: number): Response {
   return json({ error: message }, status);
 }
 
-async function checkDailyLimit(supabaseAdmin: ReturnType<typeof createClient>, functionName: string): Promise<boolean> {
+// Atomic check-and-increment: increments the daily counter and returns the new count.
+// Fail CLOSED: if the RPC errors or returns a non-number, the caller must not proceed.
+async function checkAndIncrement(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  functionName: string,
+): Promise<{ ok: true; count: number } | { ok: false; response: Response }> {
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabaseAdmin
-    .from("function_usage")
-    .select("count")
-    .eq("function_name", functionName)
-    .eq("usage_date", today)
-    .maybeSingle();
-  if (error) return false; // if the counter is unavailable, allow the call
-  return (data?.count ?? 0) < DAILY_LIMIT;
-}
-
-async function incrementUsage(supabaseAdmin: ReturnType<typeof createClient>, functionName: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { error } = await supabaseAdmin.rpc("upsert_function_usage", {
+  const { data, error } = await supabaseAdmin.rpc("upsert_function_usage", {
     p_function_name: functionName,
     p_usage_date: today,
   });
-  if (error) {
-    // fallback: best-effort direct upsert
-    await supabaseAdmin
-      .from("function_usage")
-      .upsert({ function_name: functionName, usage_date: today, count: 1 }, { onConflict: "function_name,usage_date", ignoreDuplicates: false });
+  if (error || typeof data !== "number") {
+    return { ok: false, response: err("Usage counter unavailable. Please try again later.", 503) };
   }
+  if (data > DAILY_LIMIT) {
+    return { ok: false, response: err("daily_limit", 429) };
+  }
+  return { ok: true, count: data };
 }
 
 Deno.serve(async (req: Request) => {
@@ -114,9 +108,9 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    if (!(await checkDailyLimit(supabaseAdmin, "jev-detect"))) {
-      return err("daily_limit", 429);
-    }
+    // Atomic check-and-increment BEFORE any upstream call. Fail closed on error.
+    const cap = await checkAndIncrement(supabaseAdmin, "jev-detect");
+    if (!cap.ok) return cap.response;
 
     const payload: JevRequestBody = {
       model: JEV_MODEL,
@@ -183,8 +177,6 @@ Deno.serve(async (req: Request) => {
         // keep whatever answers we have
       }
     }
-
-    await incrementUsage(supabaseAdmin, "jev-detect");
 
     const input_tokens = response.usage?.input_tokens ?? 0;
     const output_tokens = response.usage?.output_tokens ?? 0;

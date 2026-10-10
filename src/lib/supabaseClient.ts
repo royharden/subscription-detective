@@ -13,6 +13,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 async function invokeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (error) {
+    // supabase-js wraps the raw Response in error.context; check it for 429/daily_limit
+    const ctx = (error as { context?: Response }).context;
+    if (ctx) {
+      if (ctx.status === 429) throw new Error('daily_limit');
+      try {
+        const errBody = await ctx.json();
+        if (errBody?.error === 'daily_limit') throw new Error('daily_limit');
+      } catch { /* not JSON or already consumed */ }
+    }
     const message = typeof error.message === 'string' ? error.message : 'Edge function error';
     if (message.includes('daily_limit') || message.includes('429')) throw new Error('daily_limit');
     throw new Error(message);
@@ -135,7 +144,7 @@ export async function runDetection(
     return { result };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg === 'daily_limit') return { result: null, error: 'daily_limit' };
+    if (msg === 'daily_limit') return { result: heuristicResult(), error: 'daily_limit' };
     // network or API error: fall back to labeled heuristic
     return { result: heuristicResult(), error: msg };
   }
@@ -233,9 +242,14 @@ export async function saveAnalysis(payload: {
 }
 
 export async function clearSavedData(): Promise<void> {
-  await supabase.from('drafts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('merchants').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('analyses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  // DELETE is revoked from anon/authenticated; these will fail at the DB level.
+  // Use allSettled so local data clearing is not blocked, and server-side
+  // cleanup is best-effort (the service role in an edge function would bypass RLS).
+  await Promise.allSettled([
+    supabase.from('drafts').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    supabase.from('merchants').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+    supabase.from('analyses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+  ]);
 }
 
 export async function listSavedAnalyses(): Promise<SavedAnalysis[]> {

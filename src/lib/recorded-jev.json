@@ -1,0 +1,99 @@
+{
+  "fixture_version": 1,
+  "source": "sample-csv",
+  "summaries_hash": "72106728b0f21c1f",
+  "model": "jev-1.13.0",
+  "recorded_response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "m01": {
+        "type": "noul",
+        "noul": 0.02
+      },
+      "m02": {
+        "type": "noul",
+        "noul": 0.03
+      },
+      "m03": {
+        "type": "noul",
+        "noul": 0.98
+      },
+      "m04": {
+        "type": "noul",
+        "noul": 0.12
+      },
+      "m05": {
+        "type": "noul",
+        "noul": 0.96
+      },
+      "m06": {
+        "type": "noul",
+        "noul": 0.01
+      },
+      "m07": {
+        "type": "noul",
+        "noul": 0.08
+      },
+      "m08": {
+        "type": "noul",
+        "noul": 0.95
+      },
+      "m09": {
+        "type": "noul",
+        "noul": 0.94
+      },
+      "m10": {
+        "type": "noul",
+        "noul": 0.97
+      },
+      "m11": {
+        "type": "noul",
+        "noul": 0.96
+      },
+      "m12": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "m13": {
+        "type": "noul",
+        "noul": 0.01
+      },
+      "m14": {
+        "type": "noul",
+        "noul": 0.93
+      },
+      "m15": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "m16": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "m17": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "m18": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "m19": {
+        "type": "noul",
+        "noul": 0.05
+      },
+      "m20": {
+        "type": "noul",
+        "noul": 0.05
+      }
+    },
+    "usage": {
+      "input_tokens": 2140,
+      "output_tokens": 46
+    }
+  },
+  "request_log": {
+    "question_count": 20,
+    "latency_ms": 612
+  }
+}

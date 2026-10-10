@@ -1,0 +1,706 @@
+{
+  "model": "jev-1.13.0",
+  "state": {
+    "merchants": {
+      "m01": {
+        "name": "BEAN THERE COFFEE SHOP",
+        "sample_descriptors": [
+          "BEAN THERE COFFEE SHOP"
+        ],
+        "charges": [
+          {
+            "date": "2026-08-21",
+            "amount": 5.5
+          },
+          {
+            "date": "2026-08-25",
+            "amount": 5.5
+          },
+          {
+            "date": "2026-08-28",
+            "amount": 5.5
+          },
+          {
+            "date": "2026-09-03",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-07",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-07",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-10",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-14",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-17",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-21",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-24",
+            "amount": 5.95
+          },
+          {
+            "date": "2026-09-28",
+            "amount": 5.95
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": 3,
+        "amount_variation": "minimal"
+      },
+      "m02": {
+        "name": "FRESHCART MARKET",
+        "sample_descriptors": [
+          "FRESHCART MARKET #212"
+        ],
+        "charges": [
+          {
+            "date": "2026-07-06",
+            "amount": 95.3
+          },
+          {
+            "date": "2026-07-13",
+            "amount": 58.12
+          },
+          {
+            "date": "2026-07-20",
+            "amount": 103.88
+          },
+          {
+            "date": "2026-07-27",
+            "amount": 66.05
+          },
+          {
+            "date": "2026-08-06",
+            "amount": 77.61
+          },
+          {
+            "date": "2026-08-13",
+            "amount": 122.4
+          },
+          {
+            "date": "2026-08-20",
+            "amount": 69.99
+          },
+          {
+            "date": "2026-08-27",
+            "amount": 88.2
+          },
+          {
+            "date": "2026-09-06",
+            "amount": 91.15
+          },
+          {
+            "date": "2026-09-13",
+            "amount": 64.78
+          },
+          {
+            "date": "2026-09-20",
+            "amount": 109.5
+          },
+          {
+            "date": "2026-09-27",
+            "amount": 73.31
+          }
+        ],
+        "cadence": "weekly",
+        "median_interval_days": 7,
+        "amount_variation": "moderate"
+      },
+      "m03": {
+        "name": "FITFORGE GYM MEMBERSHIP",
+        "sample_descriptors": [
+          "FITFORGE GYM MEMBERSHIP"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-01",
+            "amount": 39.99
+          },
+          {
+            "date": "2026-07-01",
+            "amount": 39.99
+          },
+          {
+            "date": "2026-08-01",
+            "amount": 39.99
+          },
+          {
+            "date": "2026-09-01",
+            "amount": 39.99
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m04": {
+        "name": "BRIGHTKEY PROPERTY MGMT RENT",
+        "sample_descriptors": [
+          "BRIGHTKEY PROPERTY MGMT RENT"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-01",
+            "amount": 1850
+          },
+          {
+            "date": "2026-07-01",
+            "amount": 1850
+          },
+          {
+            "date": "2026-08-01",
+            "amount": 1850
+          },
+          {
+            "date": "2026-09-01",
+            "amount": 1850
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m05": {
+        "name": "TUNEWAVE MUSIC PREMIUM",
+        "sample_descriptors": [
+          "TUNEWAVE MUSIC PREMIUM"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-03",
+            "amount": 10.99
+          },
+          {
+            "date": "2026-07-03",
+            "amount": 10.99
+          },
+          {
+            "date": "2026-08-03",
+            "amount": 10.99
+          },
+          {
+            "date": "2026-09-03",
+            "amount": 10.99
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m06": {
+        "name": "SHELL OIL GAS STATION",
+        "sample_descriptors": [
+          "SHELL OIL 5743 GAS STATION"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-04",
+            "amount": 42.18
+          },
+          {
+            "date": "2026-07-08",
+            "amount": 45.02
+          },
+          {
+            "date": "2026-08-12",
+            "amount": 44.76
+          },
+          {
+            "date": "2026-09-09",
+            "amount": 43.6
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 34,
+        "amount_variation": "minimal"
+      },
+      "m07": {
+        "name": "METRO TRANSIT CARD RELOAD",
+        "sample_descriptors": [
+          "METRO TRANSIT CARD RELOAD"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-05",
+            "amount": 50
+          },
+          {
+            "date": "2026-07-05",
+            "amount": 50
+          },
+          {
+            "date": "2026-08-05",
+            "amount": 50
+          },
+          {
+            "date": "2026-09-06",
+            "amount": 50
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m08": {
+        "name": "CLOUDVAULT STORAGE 100GB",
+        "sample_descriptors": [
+          "CLOUDVAULT STORAGE 100GB"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-07",
+            "amount": 2.99
+          },
+          {
+            "date": "2026-07-07",
+            "amount": 2.99
+          },
+          {
+            "date": "2026-08-07",
+            "amount": 2.99
+          },
+          {
+            "date": "2026-09-07",
+            "amount": 2.99
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m09": {
+        "name": "DAILY LEDGER NEWS SUBSCRIPTION",
+        "sample_descriptors": [
+          "DAILY LEDGER NEWS SUBSCRIPTION"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-09",
+            "amount": 4
+          },
+          {
+            "date": "2026-07-09",
+            "amount": 4
+          },
+          {
+            "date": "2026-08-09",
+            "amount": 4
+          },
+          {
+            "date": "2026-09-09",
+            "amount": 4
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m10": {
+        "name": "STREAMLY.COM",
+        "sample_descriptors": [
+          "STREAMLY.COM 866-555-0101"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-14",
+            "amount": 15.49
+          },
+          {
+            "date": "2026-07-14",
+            "amount": 15.49
+          },
+          {
+            "date": "2026-08-14",
+            "amount": 17.99
+          },
+          {
+            "date": "2026-09-14",
+            "amount": 17.99
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "moderate"
+      },
+      "m11": {
+        "name": "PROMPTPAL PRO AI WRITING",
+        "sample_descriptors": [
+          "PROMPTPAL PRO AI WRITING"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-21",
+            "amount": 20
+          },
+          {
+            "date": "2026-07-21",
+            "amount": 20
+          },
+          {
+            "date": "2026-08-21",
+            "amount": 20
+          },
+          {
+            "date": "2026-09-21",
+            "amount": 20
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "none"
+      },
+      "m12": {
+        "name": "NORI ICHI SUSHI BAR",
+        "sample_descriptors": [
+          "NORI ICHI SUSHI BAR"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-06",
+            "amount": 38.4
+          },
+          {
+            "date": "2026-07-11",
+            "amount": 41.1
+          },
+          {
+            "date": "2026-08-26",
+            "amount": 36.55
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": 40.5,
+        "amount_variation": "minimal"
+      },
+      "m13": {
+        "name": "CHEVRON FUEL",
+        "sample_descriptors": [
+          "CHEVRON 0092 FUEL"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-19",
+            "amount": 38.55
+          },
+          {
+            "date": "2026-07-23",
+            "amount": 40.11
+          },
+          {
+            "date": "2026-08-27",
+            "amount": 39.9
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 34.5,
+        "amount_variation": "minimal"
+      },
+      "m14": {
+        "name": "CODEMUSE AI",
+        "sample_descriptors": [
+          "CODEMUSE AI TRIAL",
+          "CODEMUSE AI CODEMUSE.COM"
+        ],
+        "charges": [
+          {
+            "date": "2026-07-12",
+            "amount": 0
+          },
+          {
+            "date": "2026-08-12",
+            "amount": 19
+          },
+          {
+            "date": "2026-09-12",
+            "amount": 19
+          }
+        ],
+        "cadence": "monthly",
+        "median_interval_days": 31,
+        "amount_variation": "large"
+      },
+      "m15": {
+        "name": "AMARA HOME DECOR SHOP",
+        "sample_descriptors": [
+          "AMARA HOME DECOR SHOP"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-10",
+            "amount": 67.99
+          },
+          {
+            "date": "2026-08-22",
+            "amount": 23.4
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": 73,
+        "amount_variation": "large"
+      },
+      "m16": {
+        "name": "LA PIAZZETTA TRATTORIA",
+        "sample_descriptors": [
+          "LA PIAZZETTA TRATTORIA"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-15",
+            "amount": 52.75
+          },
+          {
+            "date": "2026-08-02",
+            "amount": 47.3
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": 48,
+        "amount_variation": "moderate"
+      },
+      "m17": {
+        "name": "TACO RADIOS FOOD TRUCK",
+        "sample_descriptors": [
+          "TACO RADIOS FOOD TRUCK"
+        ],
+        "charges": [
+          {
+            "date": "2026-06-24",
+            "amount": 14.2
+          },
+          {
+            "date": "2026-08-18",
+            "amount": 12.9
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": 55,
+        "amount_variation": "minimal"
+      },
+      "m18": {
+        "name": "THE COPPER SKILLET",
+        "sample_descriptors": [
+          "THE COPPER SKILLET"
+        ],
+        "charges": [
+          {
+            "date": "2026-07-20",
+            "amount": 29.85
+          },
+          {
+            "date": "2026-09-05",
+            "amount": 31.2
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": 47,
+        "amount_variation": "minimal"
+      },
+      "m19": {
+        "name": "DOMAINNEST",
+        "sample_descriptors": [
+          "DOMAINNEST RENEWAL EXAMPLE-SITE.IO"
+        ],
+        "charges": [
+          {
+            "date": "2026-07-18",
+            "amount": 14.99
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": null,
+        "amount_variation": "none"
+      },
+      "m20": {
+        "name": "PAGE ONE BOOKSTORE",
+        "sample_descriptors": [
+          "PAGE ONE BOOKSTORE"
+        ],
+        "charges": [
+          {
+            "date": "2026-09-03",
+            "amount": 31.85
+          }
+        ],
+        "cadence": "irregular",
+        "median_interval_days": null,
+        "amount_variation": "none"
+      }
+    }
+  },
+  "questions": {
+    "m01": {
+      "type": "noul",
+      "instructions": "Is the merchant `m01` in `merchants` (BEAN THERE COFFEE SHOP) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m02": {
+      "type": "noul",
+      "instructions": "Is the merchant `m02` in `merchants` (FRESHCART MARKET) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m03": {
+      "type": "noul",
+      "instructions": "Is the merchant `m03` in `merchants` (FITFORGE GYM MEMBERSHIP) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m04": {
+      "type": "noul",
+      "instructions": "Is the merchant `m04` in `merchants` (BRIGHTKEY PROPERTY MGMT RENT) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m05": {
+      "type": "noul",
+      "instructions": "Is the merchant `m05` in `merchants` (TUNEWAVE MUSIC PREMIUM) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m06": {
+      "type": "noul",
+      "instructions": "Is the merchant `m06` in `merchants` (SHELL OIL GAS STATION) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m07": {
+      "type": "noul",
+      "instructions": "Is the merchant `m07` in `merchants` (METRO TRANSIT CARD RELOAD) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m08": {
+      "type": "noul",
+      "instructions": "Is the merchant `m08` in `merchants` (CLOUDVAULT STORAGE 100GB) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m09": {
+      "type": "noul",
+      "instructions": "Is the merchant `m09` in `merchants` (DAILY LEDGER NEWS SUBSCRIPTION) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m10": {
+      "type": "noul",
+      "instructions": "Is the merchant `m10` in `merchants` (STREAMLY.COM) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m11": {
+      "type": "noul",
+      "instructions": "Is the merchant `m11` in `merchants` (PROMPTPAL PRO AI WRITING) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m12": {
+      "type": "noul",
+      "instructions": "Is the merchant `m12` in `merchants` (NORI ICHI SUSHI BAR) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m13": {
+      "type": "noul",
+      "instructions": "Is the merchant `m13` in `merchants` (CHEVRON FUEL) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m14": {
+      "type": "noul",
+      "instructions": "Is the merchant `m14` in `merchants` (CODEMUSE AI) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m15": {
+      "type": "noul",
+      "instructions": "Is the merchant `m15` in `merchants` (AMARA HOME DECOR SHOP) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m16": {
+      "type": "noul",
+      "instructions": "Is the merchant `m16` in `merchants` (LA PIAZZETTA TRATTORIA) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m17": {
+      "type": "noul",
+      "instructions": "Is the merchant `m17` in `merchants` (TACO RADIOS FOOD TRUCK) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m18": {
+      "type": "noul",
+      "instructions": "Is the merchant `m18` in `merchants` (THE COPPER SKILLET) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m19": {
+      "type": "noul",
+      "instructions": "Is the merchant `m19` in `merchants` (DOMAINNEST) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    },
+    "m20": {
+      "type": "noul",
+      "instructions": "Is the merchant `m20` in `merchants` (PAGE ONE BOOKSTORE) a recurring subscription or membership that bills automatically for ongoing access?",
+      "criteria": {
+        "true": "Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).",
+        "false": "Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments)."
+      }
+    }
+  }
+}

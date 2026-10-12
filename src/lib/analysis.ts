@@ -87,64 +87,102 @@ export function heuristicStatus(stats: ReturnType<typeof cadenceStats>, charges:
   return 'not_subscription';
 }
 
+// Neutral question IDs (m01, m02, ...) assigned by position in the full candidate list,
+// so IDs stay unique across chunks and match the idMap built for analyzeMerchants.
+export function questionId(index: number): string {
+  return `m${String(index + 1).padStart(2, '0')}`;
+}
+
+export interface QuestionEntry {
+  id: string;
+  summary: CandidateSummary;
+}
+
 export interface ChunkPlan {
-  chunks: CandidateSummary[][];
+  chunks: QuestionEntry[][];
   estimatedTokens: number;
 }
 
+// Mirrors the jev-detect Edge Function limits: 32 KB request body, 200 chars per field.
+const MAX_REQUEST_BYTES = 30 * 1024;
+const MAX_FIELD_CHARS = 200;
+const REQUEST_ENVELOPE_BYTES = utf8Bytes(JSON.stringify({ state: { merchants: {} }, questions: {} }));
+
+function utf8Bytes(s: string): number {
+  return new TextEncoder().encode(s).length;
+}
+
+function clip(s: string): string {
+  return s.length > MAX_FIELD_CHARS ? s.slice(0, MAX_FIELD_CHARS) : s;
+}
+
+function entryBytes(entry: QuestionEntry): number {
+  return (
+    utf8Bytes(JSON.stringify({ [entry.id]: stateEntry(entry.summary) })) +
+    utf8Bytes(JSON.stringify({ [entry.id]: questionFor(entry) }))
+  );
+}
+
 export function planChunks(candidates: CandidateSummary[]): ChunkPlan {
-  const chunks: CandidateSummary[][] = [];
-  let current: CandidateSummary[] = [];
+  const chunks: QuestionEntry[][] = [];
+  let current: QuestionEntry[] = [];
   let currentTokens = 0;
-  for (const c of candidates) {
+  let currentBytes = REQUEST_ENVELOPE_BYTES;
+  candidates.forEach((c, i) => {
+    const entry = { id: questionId(i), summary: c };
     const t = estimateTokens(c);
-    if (current.length >= MAX_MERCHANTS_PER_CHUNK || currentTokens + t > MAX_STATE_TOKENS) {
+    const b = entryBytes(entry);
+    if (
+      current.length >= MAX_MERCHANTS_PER_CHUNK ||
+      currentTokens + t > MAX_STATE_TOKENS ||
+      currentBytes + b > MAX_REQUEST_BYTES
+    ) {
       if (current.length) chunks.push(current);
       current = [];
       currentTokens = 0;
+      currentBytes = REQUEST_ENVELOPE_BYTES;
     }
-    current.push(c);
+    current.push(entry);
     currentTokens += t;
-  }
+    currentBytes += b;
+  });
   if (current.length) chunks.push(current);
   return { chunks, estimatedTokens: Math.round(candidates.reduce((a, c) => a + estimateTokens(c), 0)) };
 }
 
-export function buildQuestions(summaries: CandidateSummary[]): Record<string, unknown> {
+function questionFor({ id, summary }: QuestionEntry): Record<string, unknown> {
+  return {
+    type: 'noul',
+    instructions: `Is the merchant \`${id}\` in \`merchants\` (${clip(summary.name)}) a recurring subscription or membership that bills automatically for ongoing access?`,
+    criteria: {
+      true: 'Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).',
+      false: 'Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments).',
+    },
+  };
+}
+
+function stateEntry(s: CandidateSummary): Record<string, unknown> {
+  return {
+    name: clip(s.name),
+    sample_descriptors: s.sample_descriptors.map(clip),
+    charges: s.charges,
+    cadence: s.cadence,
+    median_interval_days: s.median_interval_days,
+    amount_variation: s.amount_variation,
+  };
+}
+
+export function buildQuestions(entries: QuestionEntry[]): Record<string, unknown> {
   const questions: Record<string, unknown> = {};
-  summaries.forEach((s, i) => {
-    const qid = `m${String(i + 1).padStart(2, '0')}`;
-    questions[qid] = {
-      type: 'noul',
-      instructions: `Is the merchant \`${qid}\` in \`merchants\` (${s.name}) a recurring subscription or membership that bills automatically for ongoing access?`,
-      criteria: {
-        true: 'Automatic renewals for ongoing access (streaming, software, AI tools, storage, news, gyms, memberships).',
-        false: 'Separate purchases chosen each time (groceries, restaurants, fuel, shopping, transit top-ups, one-off payments).',
-      },
-    };
-  });
+  for (const entry of entries) questions[entry.id] = questionFor(entry);
   return questions;
 }
 
-export function buildState(summaries: CandidateSummary[]): Record<string, unknown> {
+// State is keyed by the same question IDs the questions refer to ("merchant `m01` in `merchants`").
+export function buildState(entries: QuestionEntry[]): Record<string, unknown> {
   const merchants: Record<string, unknown> = {};
-  for (const s of summaries) {
-    merchants[s.key] = {
-      name: s.name,
-      sample_descriptors: s.sample_descriptors,
-      charges: s.charges,
-      cadence: s.cadence,
-      median_interval_days: s.median_interval_days,
-      amount_variation: s.amount_variation,
-    };
-  }
+  for (const entry of entries) merchants[entry.id] = stateEntry(entry.summary);
   return { merchants };
-}
-
-export function idToMerchant(summaries: CandidateSummary[]): Map<string, string> {
-  const map = new Map<string, string>();
-  summaries.forEach((s, i) => map.set(`m${String(i + 1).padStart(2, '0')}`, s.key));
-  return map;
 }
 
 export function analyzeMerchants(

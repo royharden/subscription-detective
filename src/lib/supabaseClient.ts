@@ -1,42 +1,93 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { jevDetectResultSchema, JevDetectResult, draftResultSchema, planChunks, buildQuestions, buildState, idToMerchant } from './analysis';
+import { JevDetectResult, draftResultSchema, planChunks, buildQuestions, buildState, QuestionEntry } from './analysis';
 import { CandidateSummary } from './csv';
 import { RecordedJevFixture } from './recordedJev';
+import { templateDraft } from './draftTemplates';
 import { detectPriceHikes, detectTrialConversion, cadenceStats, monthlyEquivalentCents } from './detection';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const supabaseReady = Boolean(supabaseUrl && supabaseAnonKey);
+// Only create the client when both VITE_ vars are present (and accepted by createClient).
+// Otherwise the app still renders with a setup message, and the sample CSV + Replay keep working.
+function createSupabaseClient(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    return createClient(supabaseUrl, supabaseAnonKey);
+  } catch (e) {
+    console.error('Supabase client could not be created. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.', e);
+    return null;
+  }
+}
 
-export const supabase: SupabaseClient = supabaseReady
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
-  : (null as unknown as SupabaseClient);
+export const supabase: SupabaseClient | null = createSupabaseClient();
 
-async function invokeRaw(name: string, body: unknown): Promise<{ ok: boolean; status: number; json: unknown }> {
-  if (!supabaseReady) {
+export const supabaseReady = supabase !== null;
+
+interface InvokeResult {
+  ok: boolean;
+  status: number;
+  json: unknown;
+}
+
+// supabase.functions.invoke sends the anon key as Authorization: Bearer + apikey, which the
+// functions require (verify_jwt = true). On a non-2xx reply the status and JSON body are
+// read from error.context (the raw Response).
+async function invokeFunction(name: string, body: Record<string, unknown>): Promise<InvokeResult> {
+  if (!supabase) {
     return { ok: false, status: 503, json: { error: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.' } };
   }
-  const url = supabaseUrl as string;
-  const key = supabaseAnonKey as string;
-  const res = await fetch(`${url}/functions/v1/${name}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, apikey: key },
-    body: JSON.stringify(body),
-  });
-  let json: unknown = null;
   try {
-    json = await res.json();
-  } catch {
-    json = null;
+    const { data, error } = await supabase.functions.invoke(name, { body });
+    if (!error) return { ok: true, status: 200, json: data };
+    if (error instanceof FunctionsHttpError) {
+      const res = error.context as Response;
+      let json: unknown = null;
+      try {
+        json = await res.json();
+      } catch {
+        json = null;
+      }
+      return { ok: false, status: res.status, json };
+    }
+    return { ok: false, status: 0, json: { error: error instanceof Error ? error.message : String(error) } };
+  } catch (e) {
+    return { ok: false, status: 0, json: { error: e instanceof Error ? e.message : String(e) } };
   }
-  return { ok: res.ok, status: res.status, json };
+}
+
+function errorField(json: unknown): string | undefined {
+  const value = (json as { error?: unknown } | null)?.error;
+  return typeof value === 'string' ? value : undefined;
+}
+
+// Only our own 429 { error: "daily_limit" } is the daily demo limit. Any other 429 (for
+// example a platform rate limit) is reported as a normal error, not as the demo limit.
+function isDailyLimit(result: InvokeResult): boolean {
+  return result.status === 429 && errorField(result.json) === 'daily_limit';
 }
 
 export interface DetectOutcome {
   result: JevDetectResult | null;
   error?: string;
+}
+
+const jevChunkResponseSchema = z.object({
+  model: z.string().optional(),
+  answers: z.record(z.string(), z.object({ noul: z.number() }).passthrough()),
+  usage: z.object({ input_tokens: z.number(), output_tokens: z.number() }).optional(),
+});
+
+async function invokeJevDetect(entries: QuestionEntry[]): Promise<z.infer<typeof jevChunkResponseSchema>> {
+  const result = await invokeFunction('jev-detect', { state: buildState(entries), questions: buildQuestions(entries) });
+  if (!result.ok) {
+    if (isDailyLimit(result)) throw new Error('daily_limit');
+    throw new Error(errorField(result.json) ?? `jev-detect failed (${result.status})`);
+  }
+  const parsed = jevChunkResponseSchema.safeParse(result.json);
+  if (!parsed.success) throw new Error('Unexpected response from jev-detect');
+  return parsed.data;
 }
 
 async function callJevLive(candidates: CandidateSummary[]): Promise<JevDetectResult> {
@@ -46,48 +97,40 @@ async function callJevLive(candidates: CandidateSummary[]): Promise<JevDetectRes
   let model = 'jev-1.13.0';
 
   for (const chunk of chunks) {
-    const idMap = idToMerchant(chunk);
-    const payload = { state: buildState(chunk), questions: buildQuestions(chunk) };
     const started = performance.now();
-    const { ok, status, json } = await invokeRaw('jev-detect', payload);
-    const latency_ms = Math.round(performance.now() - started);
-    if (!ok) {
-      const err = (json as { error?: string } | null)?.error;
-      if (status === 429 || err === 'daily_limit') throw new Error('daily_limit');
-      throw new Error(err ?? `jev-detect failed (${status})`);
+    const first = await invokeJevDetect(chunk);
+    if (first.model) model = first.model;
+    const chunkAnswers: Record<string, { noul: number }> = {};
+    for (const entry of chunk) {
+      const a = first.answers[entry.id];
+      if (a) chunkAnswers[entry.id] = a;
     }
-    // retry once for missing IDs
-    let responseObj = json as Record<string, unknown>;
-    const answersRaw = (responseObj?.answers ?? {}) as Record<string, unknown>;
-    const missing = [...idMap.keys()].filter((id) => !(id in answersRaw));
+    const usage = { ...(first.usage ?? { input_tokens: 0, output_tokens: 0 }) };
+
+    // retry once for missing IDs, keeping each merchant's original question ID
+    const missing = chunk.filter((entry) => !(entry.id in chunkAnswers));
     if (missing.length > 0) {
-      const retryChunk = chunk.filter((_, i) => missing.includes(`m${String(i + 1).padStart(2, '0')}`));
-      const retry = await invokeRaw('jev-detect', {
-        state: buildState(retryChunk),
-        questions: buildQuestions(retryChunk),
-      });
-      if (retry.ok) {
-        const retryAnswers = ((retry.json as Record<string, unknown>)?.answers ?? {}) as Record<string, unknown>;
-        Object.assign(answersRaw, retryAnswers);
-        responseObj = { ...responseObj, answers: answersRaw };
+      try {
+        const retry = await invokeJevDetect(missing);
+        for (const entry of missing) {
+          const a = retry.answers[entry.id];
+          if (a) chunkAnswers[entry.id] = a;
+        }
+        usage.input_tokens += retry.usage?.input_tokens ?? 0;
+        usage.output_tokens += retry.usage?.output_tokens ?? 0;
+      } catch (e) {
+        // never call again after the daily limit; any other retry failure keeps what we have
+        if (e instanceof Error && e.message === 'daily_limit') throw e;
       }
     }
-    const parsed = z
-      .object({
-        model: z.string().optional(),
-        answers: z.record(z.string(), z.object({ noul: z.number() }).passthrough()),
-        usage: z.object({ input_tokens: z.number(), output_tokens: z.number() }).optional(),
-      })
-      .safeParse(responseObj);
-    if (!parsed.success) throw new Error('Unexpected response from jev-detect');
-    if (parsed.data.model) model = parsed.data.model;
-    for (const [id, a] of Object.entries(parsed.data.answers)) {
+    const latency_ms = Math.round(performance.now() - started);
+
+    for (const [id, a] of Object.entries(chunkAnswers)) {
       // Store keyed by question ID (m01, m02, ...) so analyzeMerchants can look them up
       answers[id] = { noul: a.noul, confidence: Math.abs(2 * a.noul - 1) };
     }
-    const usage = parsed.data.usage ?? { input_tokens: 0, output_tokens: 0 };
     requests.push({
-      question_count: Object.keys(parsed.data.answers).length,
+      question_count: Object.keys(chunkAnswers).length,
       usage,
       latency_ms,
       cost_usd: (usage.input_tokens * 0.042) / 1_000_000,
@@ -153,13 +196,24 @@ export interface DraftInput {
 }
 
 export async function draftCancellation(input: DraftInput): Promise<{ subject: string; body: string; mode: 'live' | 'mock' }> {
-  const { ok, status, json } = await invokeRaw('draft-cancellation', input);
-  if (!ok) {
-    const err = (json as { error?: string } | null)?.error;
-    if (status === 429 || err === 'daily_limit') throw new Error('daily_limit');
-    throw new Error(err ?? `draft-cancellation failed (${status})`);
+  if (!supabase) {
+    // No Supabase configured: build the draft from templates so the demo keeps working
+    return { ...templateDraft(input), mode: 'mock' };
   }
-  const parsed = draftResultSchema.safeParse(json);
+  // draft-cancellation rejects string fields over 200 characters
+  const clip = (s: string) => s.slice(0, 200);
+  const result = await invokeFunction('draft-cancellation', {
+    merchant: clip(input.merchant),
+    priceCents: input.priceCents,
+    cadence: clip(input.cadence),
+    lastChargeDate: clip(input.lastChargeDate),
+    tone: input.tone,
+  });
+  if (!result.ok) {
+    if (isDailyLimit(result)) throw new Error('daily_limit');
+    throw new Error(errorField(result.json) ?? `draft-cancellation failed (${result.status})`);
+  }
+  const parsed = draftResultSchema.safeParse(result.json);
   if (!parsed.success) throw new Error('Unexpected response from draft-cancellation');
   return { subject: parsed.data.subject, body: parsed.data.body, mode: parsed.data.mode };
 }
@@ -197,7 +251,7 @@ export async function saveAnalysis(payload: {
   }>;
   drafts: Array<{ merchant_key: string; tone: string; subject: string; body: string }>;
 }): Promise<void> {
-  if (!supabaseReady) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  if (!supabase) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
   const { data: analysis, error } = await supabase
     .from('analyses')
     .insert({
@@ -236,13 +290,15 @@ export async function saveAnalysis(payload: {
   }
 }
 
+// Clears browser state only. Anon DELETE on the saved-analysis tables is revoked on purpose,
+// so there is no server-side delete from the browser.
 export function clearLocalData(): void {
   localStorage.removeItem('sd_results');
   localStorage.removeItem('sd_drafts');
 }
 
 export async function listSavedAnalyses(): Promise<SavedAnalysis[]> {
-  if (!supabaseReady) return [];
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from('analyses')
     .select('id, title, created_at, monthly_total_cents, annual_total_cents')

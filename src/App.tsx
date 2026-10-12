@@ -10,7 +10,7 @@ import { Timeline } from '@/components/Timeline';
 import { MerchantDrawer } from '@/components/MerchantDrawer';
 import { StatsPanel } from '@/components/StatsPanel';
 import { ReplayBadge } from '@/components/badges';
-import { MerchantResult, Status, computeTotals, analyzeMerchants, JevRequestLog } from '@/lib/analysis';
+import { MerchantResult, Status, computeTotals, analyzeMerchants, JevRequestLog, questionId } from '@/lib/analysis';
 import { groupMerchants, toCandidateSummary, isCandidateMerchant } from '@/lib/csv';
 import { runDetection, clearLocalData, supabaseReady } from '@/lib/supabaseClient';
 import { createHash } from '@/lib/hash';
@@ -70,7 +70,7 @@ export default function App() {
       }
 
       const idMap = new Map<string, string>();
-      candidates.forEach((c, i) => idMap.set(`m${String(i + 1).padStart(2, '0')}`, c.key));
+      candidates.forEach((c, i) => idMap.set(questionId(i), c.key));
       const analyzed = analyzeMerchants(groups, outcome.result?.answers_by_merchant ?? {}, idMap, mode);
       setResults(analyzed);
       setPhase('results');

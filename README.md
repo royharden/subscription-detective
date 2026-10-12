@@ -27,24 +27,27 @@ flowchart LR
 
 - The CSV is parsed entirely in the browser. The raw file and raw rows are never uploaded or stored on a server.
 - Only a minimal per-merchant summary (cleaned merchant name, charge dates, amounts, code-computed cadence facts) is sent to the `jev-detect` Edge Function. Account numbers, balances, card digits, and memos are dropped before anything leaves the browser.
-- Analyses live in localStorage by default. **Save analysis** (opt-in) stores only merchant summaries and results in Supabase. **Clear all data** wipes both.
+- Analyses live in localStorage by default. **Save analysis** (opt-in) stores only merchant summaries and results in Supabase. **Clear local data** wipes browser data only; the browser has no UPDATE/DELETE rights on saved rows (revoked on purpose).
 - Subscription Detective never sends email. Drafts are text you copy into your own mail app.
 
 ## Modes
 
 - **Jev mode** - Live / Replay. Replay (automatic when `TYPESAFE_API_KEY` is missing) works only for the bundled sample CSV, using recorded answers in `public/sample/recorded-jev.json`. Replay results carry a visible "Replay: recorded Jev answers" badge and are never presented as live. A custom CSV in Replay mode falls back to a labeled **Heuristic (not Jev)** classifier (cadence + amount stability).
 - **LLM mode** - Live / Mock. Mock (automatic when `OPENAI_API_KEY` is missing) builds drafts from templates.
-- With no secrets set, the sample runs end to end (Replay + Mock).
-- Each Edge Function is capped at 200 calls per day; the UI then switches to Replay so the demo keeps working.
+- With no secrets set, the sample runs end to end (Replay + Mock). Without `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` the app shows a setup notice; the sample, Replay and template drafts still work, saving is disabled.
+- Each Edge Function is capped at 200 upstream (paid) calls per UTC day (`DAILY_CALL_LIMIT` overrides). Every TypeSafe/OpenAI fetch is counted right before it is sent, including retries and the missing-ID follow-up. Over the cap a function returns `429 { "error": "daily_limit" }`; the UI then shows "Heuristic fallback - daily demo limit reached" (or a template draft), never Replay unless the answers really are the recorded ones. If the counter is unavailable the function fails closed with 503.
+- Requests are bounded: bodies over 32 KB get 413, and merchant/cadence/date and other string fields are capped at 200 characters (422). The browser splits large statements into chunks that stay under the limit.
 
 ## Setup
 
 ```bash
 # secrets (server-side only, never in the browser)
+# SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided to Edge Functions automatically.
 supabase secrets set TYPESAFE_API_KEY=sk-...
 supabase secrets set OPENAI_API_KEY=sk-...
 supabase secrets set OPENAI_MODEL=gpt-6-luna
 supabase secrets set OPENAI_BASE_URL=https://api.openai.com/v1
+supabase secrets set DAILY_CALL_LIMIT=200   # optional
 
 # deploy
 supabase functions deploy jev-detect
@@ -63,10 +66,11 @@ npm run dev        # the sample works with no secrets (Replay + Mock)
 | `OPENAI_API_KEY` | for live drafts | - | server-side secret (Edge Function) |
 | `OPENAI_MODEL` | no | `gpt-6-luna` | server-side secret (Edge Function) |
 | `OPENAI_BASE_URL` | no | `https://api.openai.com/v1` | server-side secret (Edge Function) |
+| `DAILY_CALL_LIMIT` | no | `200` | server-side secret (Edge Function) |
 | `VITE_SUPABASE_URL` | yes | pre-provisioned | public (browser bundle) |
 | `VITE_SUPABASE_ANON_KEY` | yes | pre-provisioned | public (browser bundle) |
 
-Never put an API key in client code, the sample CSV, fixtures, or committed `.env` files. Use placeholders like `sk-...` in docs.
+Never put an API key in client code, the sample CSV, fixtures, or committed `.env` files. Use placeholders like `sk-...` in docs. Set the `VITE_` variables in Bolt or your hosting provider's environment settings rather than committing a `.env`. Both Edge Functions use `verify_jwt = true`; the browser calls them through `supabase.functions.invoke`, which sends the anon key.
 
 ## Screenshots
 

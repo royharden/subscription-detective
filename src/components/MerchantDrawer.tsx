@@ -3,6 +3,7 @@ import { X, Copy, Download, Mail, Loader2 } from 'lucide-react';
 import { MerchantResult } from '@/lib/analysis';
 import { formatCents } from '@/lib/detection';
 import { draftCancellation } from '@/lib/supabaseClient';
+import { templateDraft } from '@/lib/draftTemplates';
 import { StatusBadge, PriceHikeChip, TrialChip, formatDate as fmtDate } from './badges';
 
 type Tone = 'polite' | 'firm' | 'refund';
@@ -26,25 +27,33 @@ export function MerchantDrawer({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [limitFallback, setLimitFallback] = useState(false);
 
   const lastCharge = result.group.charges[result.group.charges.length - 1];
 
   const generate = async () => {
     setLoading(true);
     setError(null);
+    const input = {
+      merchant: result.group.displayName,
+      priceCents: result.stats.amountMedianCents,
+      cadence: result.stats.cadence,
+      lastChargeDate: lastCharge?.date ?? '',
+      tone,
+    };
     try {
-      const d = await draftCancellation({
-        merchant: result.group.displayName,
-        priceCents: result.stats.amountMedianCents,
-        cadence: result.stats.cadence,
-        lastChargeDate: lastCharge?.date ?? '',
-        tone,
-      });
+      const d = await draftCancellation(input);
       setDraft(d);
+      setLimitFallback(false);
       onLlmMode(d.mode);
     } catch (e) {
-      if (e instanceof Error && e.message === 'daily_limit') onLimitReached();
-      else setError(e instanceof Error ? e.message : 'Could not draft the email.');
+      if (e instanceof Error && e.message === 'daily_limit') {
+        // Daily demo limit: fall back to the template draft and say so
+        setDraft({ ...templateDraft(input), mode: 'mock' });
+        setLimitFallback(true);
+        onLlmMode('mock');
+        onLimitReached();
+      } else setError(e instanceof Error ? e.message : 'Could not draft the email.');
     } finally {
       setLoading(false);
     }
@@ -198,7 +207,9 @@ export function MerchantDrawer({
               </div>
               <p className="mt-3 text-xs text-slate-400">
                 Subscription Detective never sends email. Copy this into your own mail app.
-                {llmModeKnown && draft.mode === 'mock' && ' Draft built from a template (mock LLM mode).'}
+                {limitFallback
+                  ? ' Daily demo limit reached - draft built from a template, not the live LLM.'
+                  : llmModeKnown && draft.mode === 'mock' && ' Draft built from a template (mock LLM mode).'}
               </p>
             </div>
           )}

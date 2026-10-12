@@ -4,6 +4,7 @@ import { JevDetectResult, draftResultSchema, planChunks, buildQuestions, buildSt
 import { CandidateSummary } from './csv';
 import { RecordedJevFixture } from './recordedJev';
 import { templateDraft } from './draftTemplates';
+import { clipText } from './text';
 import { detectPriceHikes, detectTrialConversion, cadenceStats, monthlyEquivalentCents } from './detection';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -201,7 +202,7 @@ export async function draftCancellation(input: DraftInput): Promise<{ subject: s
     return { ...templateDraft(input), mode: 'mock' };
   }
   // draft-cancellation rejects string fields over 200 characters
-  const clip = (s: string) => s.slice(0, 200);
+  const clip = (s: string) => clipText(s, 200);
   const result = await invokeFunction('draft-cancellation', {
     merchant: clip(input.merchant),
     priceCents: input.priceCents,
@@ -226,6 +227,11 @@ export interface SavedAnalysis {
   annual_total_cents: number;
 }
 
+// Mirrors the save-analysis Edge Function limits so normal saves always fit.
+const SAVE_LIMITS = { title: 200, field: 200, chargesPerMerchant: 500, subject: 500, draftBody: 10000 };
+
+// Saves go through the save-analysis Edge Function (service role, validated and size-bounded).
+// The browser roles have SELECT only on the saved-analysis tables.
 export async function saveAnalysis(payload: {
   title: string;
   jev_mode: string;
@@ -239,7 +245,7 @@ export async function saveAnalysis(payload: {
   merchants: Array<{
     question_id: string;
     display_name: string;
-    charges: unknown;
+    charges: Array<{ date: string; amountCents: number; descriptor: string }>;
     cadence: unknown;
     noul: number;
     status: string;
@@ -252,41 +258,27 @@ export async function saveAnalysis(payload: {
   drafts: Array<{ merchant_key: string; tone: string; subject: string; body: string }>;
 }): Promise<void> {
   if (!supabase) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
-  const { data: analysis, error } = await supabase
-    .from('analyses')
-    .insert({
-      title: payload.title,
-      jev_mode: payload.jev_mode,
-      llm_mode: payload.llm_mode,
-      date_from: payload.date_from,
-      date_to: payload.date_to,
-      monthly_total_cents: payload.monthly_total_cents,
-      annual_total_cents: payload.annual_total_cents,
-      jev_requests: payload.jev_requests,
-      jev_cost_usd: payload.jev_cost_usd,
-    })
-    .select('id')
-    .single();
-  if (error) throw new Error(error.message);
-  const analysisId = analysis.id as string;
-
-  const merchantRows = payload.merchants.map((m) => ({ ...m, analysis_id: analysisId }));
-  const { data: insertedMerchants, error: mErr } = await supabase.from('merchants').insert(merchantRows).select('id, display_name');
-  if (mErr) throw new Error(mErr.message);
-
-  const keyToId = new Map<string, string>();
-  for (const m of insertedMerchants ?? []) {
-    keyToId.set(m.display_name, m.id);
-  }
-  const draftRows = payload.drafts
-    .map((d) => {
-      const merchantId = keyToId.get(d.merchant_key);
-      return merchantId ? { merchant_id: merchantId, tone: d.tone, subject: d.subject, body: d.body } : null;
-    })
-    .filter((d): d is NonNullable<typeof d> => d !== null);
-  if (draftRows.length > 0) {
-    const { error: dErr } = await supabase.from('drafts').insert(draftRows);
-    if (dErr) throw new Error(dErr.message);
+  const clip = clipText;
+  const result = await invokeFunction('save-analysis', {
+    ...payload,
+    title: clip(payload.title, SAVE_LIMITS.title) || 'Untitled analysis',
+    merchants: payload.merchants.map((m) => ({
+      ...m,
+      display_name: clip(m.display_name, SAVE_LIMITS.field),
+      charges: m.charges
+        .slice(-SAVE_LIMITS.chargesPerMerchant)
+        .map((c) => ({ date: c.date, amountCents: c.amountCents, descriptor: clip(c.descriptor, SAVE_LIMITS.field) })),
+    })),
+    drafts: payload.drafts.map((d) => ({
+      merchant_key: clip(d.merchant_key, SAVE_LIMITS.field),
+      tone: d.tone,
+      subject: clip(d.subject, SAVE_LIMITS.subject),
+      body: clip(d.body, SAVE_LIMITS.draftBody),
+    })),
+  });
+  if (!result.ok) {
+    if (isDailyLimit(result)) throw new Error('daily_limit');
+    throw new Error(errorField(result.json) ?? `save-analysis failed (${result.status})`);
   }
 }
 

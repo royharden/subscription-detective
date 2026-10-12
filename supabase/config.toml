@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.draft-cancellation]
 verify_jwt = true
+
+[functions.save-analysis]
+verify_jwt = true

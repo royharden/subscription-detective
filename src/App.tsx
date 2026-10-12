@@ -171,8 +171,14 @@ export default function App() {
         drafts,
       });
       setSaveState('saved');
-    } catch {
+    } catch (e) {
       setSaveState('error');
+      const msg = e instanceof Error ? e.message : String(e);
+      setNotice(
+        msg === 'daily_limit'
+          ? 'Daily demo save limit reached - this analysis was not saved.'
+          : `Could not save the analysis: ${msg}`,
+      );
     }
   }, [parseInfo, jevMode, llmMode, totals, requests, results]);
 

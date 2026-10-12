@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Charge, Cadence, cadenceStats, detectPriceHikes, detectTrialConversion, monthlyEquivalentCents, nextRenewal } from './detection';
 import { MerchantGroup, toCandidateSummary, isCandidateMerchant, estimateTokens, MAX_MERCHANTS_PER_CHUNK, MAX_STATE_TOKENS, CandidateSummary } from './csv';
+import { clipText } from './text';
 
 export type Status = 'subscription' | 'maybe' | 'not_subscription';
 export type StatusSource = 'jev' | 'heuristic' | 'user' | 'replay';
@@ -113,7 +114,7 @@ function utf8Bytes(s: string): number {
 }
 
 function clip(s: string): string {
-  return s.length > MAX_FIELD_CHARS ? s.slice(0, MAX_FIELD_CHARS) : s;
+  return clipText(s, MAX_FIELD_CHARS);
 }
 
 function entryBytes(entry: QuestionEntry): number {

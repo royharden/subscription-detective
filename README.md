@@ -20,14 +20,16 @@ flowchart LR
     A -->|merchant + price + tone| C[Edge Function: draft-cancellation]
     B -->|one batched request| D[TypeSafe Jev API]
     C -->|JSON mode, no temperature| E[OpenAI-compatible LLM]
-    A -.->|opt-in Save analysis: summaries only| F[(Supabase Postgres)]
+    A -.->|opt-in Save analysis: summaries only| G[Edge Function: save-analysis]
+    G -->|service role, validated + size-bounded| F[(Supabase Postgres)]
+    A -.->|read only| F
 ```
 
 ## Privacy
 
 - The CSV is parsed entirely in the browser. The raw file and raw rows are never uploaded or stored on a server.
 - Only a minimal per-merchant summary (cleaned merchant name, charge dates, amounts, code-computed cadence facts) is sent to the `jev-detect` Edge Function. Account numbers, balances, card digits, and memos are dropped before anything leaves the browser.
-- Analyses live in localStorage by default. **Save analysis** (opt-in) stores only merchant summaries and results in Supabase. **Clear local data** wipes browser data only; the browser has no UPDATE/DELETE rights on saved rows (revoked on purpose).
+- Analyses live in localStorage by default. **Save analysis** (opt-in) stores only merchant summaries and results in Supabase, through the `save-analysis` Edge Function. The browser (anon key) can only read the saved-analysis tables; it has no INSERT, UPDATE or DELETE rights. **Clear local data** wipes browser data only.
 - Subscription Detective never sends email. Drafts are text you copy into your own mail app.
 
 ## Modes
@@ -37,6 +39,7 @@ flowchart LR
 - With no secrets set, the sample runs end to end (Replay + Mock). Without `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` the app shows a setup notice; the sample, Replay and template drafts still work, saving is disabled.
 - Each Edge Function is capped at 200 upstream (paid) calls per UTC day (`DAILY_CALL_LIMIT` overrides). Every TypeSafe/OpenAI fetch is counted right before it is sent, including retries and the missing-ID follow-up. Over the cap a function returns `429 { "error": "daily_limit" }`; the UI then shows "Heuristic fallback - daily demo limit reached" (or a template draft), never Replay unless the answers really are the recorded ones. If the counter is unavailable the function fails closed with 503.
 - Requests are bounded: bodies over 32 KB get 413, and merchant/cadence/date and other string fields are capped at 200 characters (422). The browser splits large statements into chunks that stay under the limit.
+- `save-analysis` makes no AI call, so it doesn't use the AI functions' caps; it has its own 200 saves/day cap (same `DAILY_CALL_LIMIT`). It accepts bodies up to 512 KB, at most 500 merchants with 500 charges each, and validates every column (enums, dates, 200-char names, integer cents). Matching CHECK constraints on the tables are validated against every row.
 
 ## Setup
 
@@ -52,6 +55,7 @@ supabase secrets set DAILY_CALL_LIMIT=200   # optional
 # deploy
 supabase functions deploy jev-detect
 supabase functions deploy draft-cancellation
+supabase functions deploy save-analysis
 supabase db push   # run migrations
 
 npm install
